@@ -1,0 +1,390 @@
+<!DOCTYPE html>
+<html lang="ru" data-theme="dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+  <meta name="theme-color" content="#17212b">
+  <title>PulseGram — Мессенджер для GitHub Pages</title>
+  <link rel="icon" type="image/svg+xml" href="./icon.svg">
+  <link rel="manifest" href="./manifest.json">
+  <link rel="stylesheet" href="./styles.css">
+</head>
+<body>
+  <!-- Onboarding View -->
+  <section id="onboarding" class="onboarding hidden" aria-label="Добро пожаловать в PulseGram">
+    <div class="onboarding-bg"></div>
+    <div class="onboarding-card">
+      <div class="onboarding-brand">
+        <img src="./icon.svg" alt="PulseGram" class="onboarding-logo">
+        <div>
+          <h1>PulseGram</h1>
+          <p class="onboarding-sub">E2EE мессенджер для GitHub Pages без серверов</p>
+        </div>
+      </div>
+
+      <div id="onboardingInviteBanner" class="invite-banner hidden"></div>
+
+      <div class="seg-tabs" role="tablist">
+        <button type="button" class="seg-tab active" data-onb-tab="create">Создать аккаунт</button>
+        <button type="button" class="seg-tab" data-onb-tab="import">Войти по ключу</button>
+      </div>
+
+      <form id="onbCreateForm" class="onb-form">
+        <label class="field-label">
+          <span>Ваше имя</span>
+          <input id="onbNameInput" type="text" maxlength="48" placeholder="Например: Алексей" autocomplete="name" required>
+        </label>
+
+        <div class="field-label">
+          <span>Аватар и цвет</span>
+          <div class="avatar-picker-row">
+            <div id="onbAvatarPreview" class="avatar avatar-lg">А</div>
+            <div class="avatar-picker-controls">
+              <div id="onbEmojiChoices" class="chip-row">
+                <button type="button" class="emoji-chip active" data-emoji="">Инициалы</button>
+                <button type="button" class="emoji-chip" data-emoji="🚀">🚀</button>
+                <button type="button" class="emoji-chip" data-emoji="🦊">🦊</button>
+                <button type="button" class="emoji-chip" data-emoji="⚡">⚡</button>
+                <button type="button" class="emoji-chip" data-emoji="🌙">🌙</button>
+                <button type="button" class="emoji-chip" data-emoji="🎧">🎧</button>
+                <button type="button" class="emoji-chip" data-emoji="💎">💎</button>
+                <button type="button" class="emoji-chip" data-emoji="🌿">🌿</button>
+              </div>
+              <div id="onbColorChoices" class="swatch-row"></div>
+            </div>
+          </div>
+        </div>
+
+        <button type="submit" class="btn btn-primary btn-block">Начать общение</button>
+        <p class="onb-hint">Ключ шифрования генерируется прямо у вас в браузере. Регистрация, телефон и сервер не требуются.</p>
+      </form>
+
+      <form id="onbImportForm" class="onb-form hidden">
+        <label class="field-label">
+          <span>Секретный ключ (nsec1... или hex)</span>
+          <textarea id="onbNsecInput" rows="2" placeholder="nsec1..." spellcheck="false"></textarea>
+        </label>
+        <label class="field-label">
+          <span>Имя (если не загрузится из профиля)</span>
+          <input id="onbImportNameInput" type="text" maxlength="48" placeholder="Пользователь">
+        </label>
+        <button type="submit" class="btn btn-primary btn-block">Восстановить аккаунт</button>
+        <div class="divider-text"><span>или</span></div>
+        <label class="btn btn-secondary btn-block file-btn">
+          <span>Загрузить резервную копию (.json)</span>
+          <input id="onbBackupFile" type="file" accept=".json,application/json">
+        </label>
+      </form>
+    </div>
+  </section>
+
+  <!-- Main Messenger Shell -->
+  <div id="appShell" class="app-shell hidden">
+    <!-- Left Sidebar -->
+    <aside id="sidebar" class="sidebar" aria-label="Список чатов">
+      <header class="sidebar-header">
+        <button id="menuBtn" class="icon-btn" type="button" title="Меню" aria-label="Открыть меню">
+          <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+            <line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/>
+          </svg>
+        </button>
+
+        <div class="search-box">
+          <svg class="search-icon" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2">
+            <circle cx="11" cy="11" r="7"/><line x1="20" y1="20" x2="16.2" y2="16.2"/>
+          </svg>
+          <input id="globalSearchInput" type="search" placeholder="Поиск чатов и сообщений" autocomplete="off">
+          <button id="clearGlobalSearchBtn" class="clear-input-btn hidden" type="button" aria-label="Очистить поиск">×</button>
+        </div>
+
+        <button id="relayPill" class="relay-pill" type="button" title="Состояние Nostr-реле">
+          <span class="relay-dot"></span>
+          <span id="relayCountText">0/6</span>
+        </button>
+      </header>
+
+      <nav id="chatTabs" class="chat-tabs" aria-label="Фильтр чатов">
+        <button type="button" class="chat-tab active" data-filter="all">Все</button>
+        <button type="button" class="chat-tab" data-filter="dm">Личные</button>
+        <button type="button" class="chat-tab" data-filter="group">Группы</button>
+        <button type="button" class="chat-tab" data-filter="unread">Непрочит. <span id="unreadTotalBadge" class="tab-badge hidden">0</span></button>
+      </nav>
+
+      <div id="chatList" class="chat-list" role="list"></div>
+
+      <!-- Compose FAB -->
+      <div class="compose-fab-wrap">
+        <div id="composeMenu" class="popover-menu compose-menu hidden">
+          <button type="button" class="menu-item" data-compose="dm">
+            <span class="menu-ico">💬</span><span>Новый личный чат</span>
+          </button>
+          <button type="button" class="menu-item" data-compose="new-group">
+            <span class="menu-ico">👥</span><span>Создать группу</span>
+          </button>
+          <button type="button" class="menu-item" data-compose="join-group">
+            <span class="menu-ico">🔗</span><span>Войти по коду / ссылке</span>
+          </button>
+          <button type="button" class="menu-item" data-compose="saved">
+            <span class="menu-ico">🔖</span><span>Избранное</span>
+          </button>
+        </div>
+        <button id="composeFab" class="fab-btn" type="button" title="Новый чат или группа" aria-label="Новый чат">
+          <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/>
+          </svg>
+        </button>
+      </div>
+    </aside>
+
+    <!-- Main Chat Pane -->
+    <main id="chatPane" class="chat-pane">
+      <!-- Empty State -->
+      <div id="emptyState" class="empty-state">
+        <div class="empty-card">
+          <img src="./icon.svg" alt="" class="empty-logo">
+          <h2>Добро пожаловать в PulseGram</h2>
+          <p>Ваши сообщения защищены сквозным шифрованием (NIP-44 / AES-256-GCM) и передаются напрямую через децентрализованные реле и WebRTC без своего сервера.</p>
+          <div class="empty-actions">
+            <button id="emptyShareLinkBtn" type="button" class="btn btn-primary">
+              <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/></svg>
+              <span>Моя ссылка-приглашение</span>
+            </button>
+            <button id="emptyNewGroupBtn" type="button" class="btn btn-secondary">Создать группу</button>
+            <button id="emptyJoinLobbyBtn" type="button" class="btn btn-secondary">Общий чат PulseGram</button>
+            <button id="emptySavedBtn" type="button" class="btn btn-ghost">Открыть «Избранное»</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Active Chat -->
+      <div id="activeChat" class="active-chat hidden">
+        <header class="chat-header">
+          <button id="mobileBackBtn" class="icon-btn mobile-only" type="button" aria-label="Назад к чатам">
+            <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <polyline points="15 18 9 12 15 6"/>
+            </svg>
+          </button>
+
+          <div id="chatHeaderProfile" class="chat-header-profile" role="button" tabindex="0">
+            <div id="chatHeaderAvatar" class="avatar">?</div>
+            <div class="chat-header-meta">
+              <div class="chat-title-row">
+                <h2 id="chatHeaderTitle">Чат</h2>
+                <span id="chatE2eeBadge" class="e2ee-badge" title="Сквозное шифрование">🔒</span>
+                <span id="chatP2pBadge" class="p2p-badge hidden" title="Прямой P2P канал WebRTC активен">P2P</span>
+              </div>
+              <div id="chatHeaderSubtitle" class="chat-subtitle">подключение...</div>
+            </div>
+          </div>
+
+          <div class="chat-header-actions">
+            <button id="chatSearchToggleBtn" class="icon-btn" type="button" title="Поиск в чате" aria-label="Поиск в чате">
+              <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2">
+                <circle cx="11" cy="11" r="7"/><line x1="20" y1="20" x2="16.2" y2="16.2"/>
+              </svg>
+            </button>
+            <button id="chatInviteBtn" class="icon-btn" type="button" title="Пригласить / QR-код" aria-label="Пригласить">
+              <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><path d="M14 14h3v3h-3z"/><path d="M17 17h4v4h-4z"/><path d="M21 14v.01"/><path d="M14 21v.01"/>
+              </svg>
+            </button>
+            <button id="infoToggleBtn" class="icon-btn" type="button" title="Информация о чате" aria-label="Информация">
+              <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <rect x="3" y="3" width="18" height="18" rx="2"/><line x1="15" y1="3" x2="15" y2="21"/>
+              </svg>
+            </button>
+            <div class="dropdown-wrap">
+              <button id="chatMoreBtn" class="icon-btn" type="button" title="Ещё" aria-label="Дополнительные действия">
+                <svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor">
+                  <circle cx="12" cy="5" r="1.75"/><circle cx="12" cy="12" r="1.75"/><circle cx="12" cy="19" r="1.75"/>
+                </svg>
+              </button>
+              <div id="chatMoreMenu" class="popover-menu chat-more-menu hidden">
+                <button type="button" class="menu-item" data-chat-action="pin">📌 <span id="menuPinLabel">Закрепить чат</span></button>
+                <button type="button" class="menu-item" data-chat-action="mute">🔕 <span id="menuMuteLabel">Без звука</span></button>
+                <button type="button" class="menu-item" data-chat-action="p2p" id="menuP2pAction">⚡ <span>Установить P2P (WebRTC)</span></button>
+                <button type="button" class="menu-item" data-chat-action="clear">🧹 <span>Очистить историю</span></button>
+                <button type="button" class="menu-item danger" data-chat-action="delete">🗑 <span>Удалить чат</span></button>
+              </div>
+            </div>
+          </div>
+        </header>
+
+        <!-- In-Chat Search Bar -->
+        <div id="chatSearchBar" class="chat-search-bar hidden">
+          <input id="chatSearchInput" type="search" placeholder="Найти сообщение в этом чате...">
+          <span id="chatSearchCount" class="search-count">0/0</span>
+          <button id="chatSearchPrevBtn" class="icon-btn sm" type="button" title="Предыдущее">↑</button>
+          <button id="chatSearchNextBtn" class="icon-btn sm" type="button" title="Следующее">↓</button>
+          <button id="chatSearchCloseBtn" class="icon-btn sm" type="button" title="Закрыть">×</button>
+        </div>
+
+        <!-- Pinned Message Banner -->
+        <div id="pinnedBanner" class="pinned-banner hidden">
+          <div id="pinnedBannerClick" class="pinned-banner-content">
+            <div class="pinned-bar-line"></div>
+            <div>
+              <div class="pinned-label">Закреплённое сообщение</div>
+              <div id="pinnedPreviewText" class="pinned-text"></div>
+            </div>
+          </div>
+          <button id="unpinMsgBtn" class="icon-btn sm" type="button" title="Открепить">×</button>
+        </div>
+
+        <!-- Message Feed -->
+        <div id="messagesContainer" class="messages-container">
+          <div id="messagesList" class="messages-list"></div>
+          <button id="scrollBottomBtn" class="scroll-bottom-btn hidden" type="button" aria-label="Вниз">
+            <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+              <polyline points="6 9 12 15 18 9"/>
+            </svg>
+            <span id="scrollBottomBadge" class="scroll-badge hidden">0</span>
+          </button>
+        </div>
+
+        <!-- Drag & Drop Overlay -->
+        <div id="dropOverlay" class="drop-overlay hidden">
+          <div class="drop-box">
+            <div class="drop-ico">📎</div>
+            <div>Отпустите файл, чтобы отправить в чат</div>
+          </div>
+        </div>
+
+        <!-- Composer -->
+        <footer class="composer">
+          <div id="replyEditBar" class="reply-edit-bar hidden">
+            <div class="reply-edit-accent"></div>
+            <div class="reply-edit-body">
+              <div id="replyEditTitle" class="reply-edit-title">Ответ</div>
+              <div id="replyEditSnippet" class="reply-edit-snippet"></div>
+            </div>
+            <button id="cancelReplyEditBtn" class="icon-btn sm" type="button" aria-label="Отменить">×</button>
+          </div>
+
+          <div id="recordingBar" class="recording-bar hidden">
+            <span class="rec-dot"></span>
+            <span class="rec-label">Запись голосового…</span>
+            <span id="recordingTimer" class="rec-timer">0:00</span>
+            <div class="spacer"></div>
+            <button id="cancelRecordBtn" class="btn btn-ghost sm" type="button">Отмена</button>
+            <button id="sendRecordBtn" class="btn btn-primary sm" type="button">Отправить</button>
+          </div>
+
+          <div id="composerRow" class="composer-row">
+            <div class="attach-wrap">
+              <button id="attachBtn" class="icon-btn" type="button" title="Прикрепить фото или файл" aria-label="Прикрепить">
+                <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48"/>
+                </svg>
+              </button>
+              <div id="attachMenu" class="popover-menu attach-menu hidden">
+                <label class="menu-item file-menu-item">
+                  <span class="menu-ico">🖼️</span><span>Фото / Изображение</span>
+                  <input id="photoFileInput" type="file" accept="image/*" multiple>
+                </label>
+                <label class="menu-item file-menu-item">
+                  <span class="menu-ico">📄</span><span>Файл / Документ</span>
+                  <input id="docFileInput" type="file">
+                </label>
+              </div>
+            </div>
+
+            <textarea id="messageInput" rows="1" placeholder="Сообщение..." aria-label="Текст сообщения"></textarea>
+
+            <div class="emoji-wrap">
+              <button id="emojiBtn" class="icon-btn" type="button" title="Эмодзи" aria-label="Эмодзи">
+                <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <circle cx="12" cy="12" r="10"/><path d="M8 14s1.5 2 4 2 4-2 4-2"/><line x1="9" y1="9" x2="9.01" y2="9"/><line x1="15" y1="9" x2="15.01" y2="9"/>
+                </svg>
+              </button>
+              <div id="emojiPicker" class="emoji-picker hidden" role="dialog" aria-label="Выбор эмодзи"></div>
+            </div>
+
+            <button id="sendOrMicBtn" class="send-btn" type="button" title="Голосовое сообщение" aria-label="Отправить или записать голосовое">
+              <svg id="micIcon" viewBox="0 0 24 24" width="21" height="21" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><line x1="12" y1="19" x2="12" y2="23"/><line x1="8" y1="23" x2="16" y2="23"/>
+              </svg>
+              <svg id="sendIcon" class="hidden" viewBox="0 0 24 24" width="21" height="21" fill="currentColor">
+                <path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z"/>
+              </svg>
+            </button>
+          </div>
+        </footer>
+      </div>
+    </main>
+
+    <!-- Right Info Drawer -->
+    <aside id="infoDrawer" class="info-drawer hidden" aria-label="Информация о чате">
+      <header class="drawer-top">
+        <h3>Информация</h3>
+        <button id="closeInfoBtn" class="icon-btn sm" type="button" aria-label="Закрыть панель">×</button>
+      </header>
+      <div id="infoDrawerBody" class="info-drawer-body"></div>
+    </aside>
+  </div>
+
+  <!-- Left Navigation Drawer -->
+  <div id="navDrawerBackdrop" class="drawer-backdrop hidden"></div>
+  <nav id="navDrawer" class="nav-drawer hidden" aria-label="Меню аккаунта">
+    <div class="nav-user-header">
+      <div class="nav-user-top">
+        <div id="navAvatar" class="avatar avatar-lg">?</div>
+        <button id="themeToggleIconBtn" class="icon-btn" type="button" title="Сменить тему">🌙</button>
+      </div>
+      <div id="navUserName" class="nav-user-name">Пользователь</div>
+      <button id="navCopyNpubBtn" class="nav-user-id" type="button" title="Нажмите, чтобы скопировать ваш ID">npub1...</button>
+    </div>
+    <div class="nav-menu-list">
+      <button type="button" class="nav-item" data-nav="profile"><span>👤</span><span>Мой профиль и ключи</span></button>
+      <button type="button" class="nav-item" data-nav="new-dm"><span>💬</span><span>Новый личный чат</span></button>
+      <button type="button" class="nav-item" data-nav="new-group"><span>👥</span><span>Создать группу</span></button>
+      <button type="button" class="nav-item" data-nav="join-group"><span>🔗</span><span>Войти по коду / ссылке</span></button>
+      <button type="button" class="nav-item" data-nav="saved"><span>🔖</span><span>Избранное</span></button>
+      <button type="button" class="nav-item" data-nav="lobby"><span>🌐</span><span>Общий чат PulseGram</span></button>
+      <div class="nav-sep"></div>
+      <button type="button" class="nav-item" data-nav="relays"><span>📡</span><span>Сеть и Nostr-реле</span></button>
+      <button type="button" class="nav-item" data-nav="sound"><span>🔔</span><span>Звук сообщений</span><span id="navSoundState" class="nav-pill">Вкл</span></button>
+      <button type="button" class="nav-item" data-nav="theme"><span>🎨</span><span>Тема оформления</span><span id="navThemeState" class="nav-pill">Тёмная</span></button>
+      <div class="nav-sep"></div>
+      <button type="button" class="nav-item" data-nav="ghpages"><span>🚀</span><span>Деплой на GitHub Pages</span></button>
+    </div>
+  </nav>
+
+  <!-- Context Menu -->
+  <div id="contextMenu" class="context-menu hidden" role="menu"></div>
+
+  <!-- Modal -->
+  <div id="modalBackdrop" class="modal-backdrop hidden">
+    <div id="modalDialog" class="modal-dialog" role="dialog" aria-modal="true">
+      <header class="modal-header">
+        <h3 id="modalTitle">Окно</h3>
+        <button id="modalCloseBtn" class="icon-btn sm" type="button" aria-label="Закрыть">×</button>
+      </header>
+      <div id="modalBody" class="modal-body"></div>
+    </div>
+  </div>
+
+  <!-- Image Lightbox -->
+  <div id="lightbox" class="lightbox hidden" role="dialog" aria-modal="true">
+    <div class="lightbox-top">
+      <span id="lightboxCaption" class="lightbox-caption"></span>
+      <div class="lightbox-actions">
+        <a id="lightboxDownload" class="btn btn-secondary sm" download="image.webp">Скачать</a>
+        <button id="lightboxClose" class="icon-btn" type="button" aria-label="Закрыть">×</button>
+      </div>
+    </div>
+    <img id="lightboxImg" src="" alt="">
+  </div>
+
+  <!-- Toasts -->
+  <div id="toastContainer" class="toast-container" aria-live="polite"></div>
+
+  <script src="./vendor/nostr.bundle.js"></script>
+  <script src="./vendor/qrcode.js"></script>
+  <script src="./js/storage.js"></script>
+  <script src="./js/crypto.js"></script>
+  <script src="./js/relay.js"></script>
+  <script src="./js/webrtc.js"></script>
+  <script src="./js/app.js"></script>
+</body>
+</html>
